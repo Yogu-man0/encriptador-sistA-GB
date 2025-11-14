@@ -57,6 +57,7 @@ Representa o primeiro esboço do sistema do projeto.
      v
      
 [ 6. Saída (Orquestrador) ]
+
      |
      +--> (Se args.output) --> [ helpers.write_file() ]
      |
