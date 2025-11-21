@@ -6,7 +6,6 @@ Projeto de criptografia para a disciplina de Engenharia de Sistemas A.
 - [x] Estrutura base do projeto e Interfaces (`src/interfaces.py`).
 - [x] Gerenciador de Chaves com formatação 128-bits - HU-09 (`src/key_manager.py`).
 - [x] Algoritmo AES (Simétrico) - HU-08 (`src/ciphers/aes_cipher.py`).
-- [x] Interface de Linha de Comando (CLI) básica - HU-01 (`main.py`).
 
 ## Planejamento do Próximo Sprint (Sprint 3)
 
