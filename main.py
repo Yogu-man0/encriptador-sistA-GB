@@ -25,7 +25,7 @@ def rodar_teste_criterio_conclusao():
     
     # Fallback caso o usuário dê Enter sem digitar nada
     if not frase_original:
-        frase_original = "Engenharia de Sistemas A - Teste Padrão"
+        frase_original = "CELACANTO PROVOCA MAREMOTO"
         print(f" Nenhum texto digitado. Usando frase padrão: '{frase_original}'")
     
     print(f"\nFrase Base: '{frase_original}'\n")
