@@ -27,3 +27,4 @@ Projeto de criptografia para a disciplina de Engenharia de Sistemas A.
     * Adicionar suporte a leitura de arquivos (`--file`) (HU-03).
     * Adicionar suporte a salvamento em arquivo (`--output`) (HU-05).
 
+Feito com o auxilio do Gemini.
