@@ -1,148 +1,184 @@
 # main.py
 import argparse
 import sys
-import random
-import string
-import binascii
 import os
+import binascii
 
-# Importações dos módulos criados
-# Certifique-se que src/hasher.py existe (conforme passo anterior)
+# --- Importações dos Módulos ---
 from src.key_manager import KeyManager
 from src.ciphers.aes_cipher import AESCipher
-try:
-    from src.hasher import Hasher
-except ImportError:
-    # Mock caso o arquivo ainda não tenha sido criado fisicamente
-    class Hasher:
-        @staticmethod
-        def generate_text_hash(t): return f"hash_simulado_sha256({t})"
-        @staticmethod
-        def generate_file_hash(p): return "hash_arquivo_simulado"
-        @staticmethod
-        def verify_integrity(o, c): return o == c
-
-def rodar_teste_criterio_conclusao():
-    """
-    Executa a validação automática solicitada no prompt.
-    Critério HU-08: 5 chaves aleatórias, saídas aleatórias, reversibilidade.
-    """
-    print("\n>>> MODO DE TESTE AUTOMÁTICO (Critérios HU-08 e HU-09: AES) <<<")
-    frase_original = "Engenharia de Sistemas A - Sprint Review"
-    print(f"Frase Base: '{frase_original}'\n")
-
-    for i in range(1, 6):
-        # 1. Gera string aleatória (simulando HU-09 com tamanhos variados)
-        tamanho_random = random.randint(5, 25)
-        chave_raw = ''.join(random.choices(string.ascii_letters + string.digits, k=tamanho_random))
-        
-        # 2. Formata (HU-09)
-        chave_ajustada = KeyManager.formatar_chave_simetrica(chave_raw)
-        
-        # 3. Cifra (HU-08)
-        motor_aes = AESCipher(chave_ajustada)
-        nonce, cifrado = motor_aes.encriptar(frase_original)
-        
-        # 4. Decifra (Prova Real)
-        texto_recuperado = motor_aes.decriptar(nonce, cifrado)
-        
-        # Visualização
-        cifrado_hex = binascii.hexlify(cifrado).decode('utf-8')
-        status = "SUCESSO" if texto_recuperado == frase_original else "FALHA"
-        
-        print(f"[Teste #{i}]")
-        print(f"  Entrada Chave: '{chave_raw}'")
-        print(f"  Chave 128-bit: {chave_ajustada}")
-        print(f"  Ciphertext:    {cifrado_hex[:30]}... (Visualmente Aleatório)")
-        print(f"  Status Decrypt: {status}")
-        print("-" * 50)
-
-def rodar_teste_hashing():
-    """
-    Executa validação automática para o Épico 5 (HU-16).
-    """
-    print("\n>>> MODO DE TESTE AUTOMÁTICO (Critério HU-16: Hashing SHA-256) <<<")
-    hasher = Hasher()
-    
-    # Teste 1: Hash de Texto
-    texto = "Integridade é tudo"
-    hash1 = hasher.generate_text_hash(texto)
-    print(f"[Teste Hash Texto]")
-    print(f"  Entrada: '{texto}'")
-    print(f"  SHA-256: {hash1}")
-    
-    # Teste 2: Integridade (Positivo)
-    check_ok = hasher.verify_integrity(hash1, hash1)
-    print(f"  Verificação com mesmo hash: {'SUCESSO' if check_ok else 'FALHA'}")
-    
-    # Teste 3: Integridade (Negativo)
-    fake_hash = hash1.replace('a', 'b').replace('1', '2')
-    check_fail = hasher.verify_integrity(hash1, fake_hash)
-    print(f"  Verificação com hash alterado: {'SUCESSO' if not check_fail else 'FALHA'}")
-    print("-" * 50)
+from src.ciphers.rsa_cipher import RSACipher
+from src.hashes.sha_hasher import SHA256Hasher  # Nova importação
 
 def main():
-    # Configuração Inicial do Épico 1 (CLI com argparse)
-    # Referência PDF: HU-01 a HU-06 + HU-16 (Hashing)
-    parser = argparse.ArgumentParser(description="O Encriptador - CLI")
+    # Configuração do Parser de Argumentos (CLI)
+    parser = argparse.ArgumentParser(
+        description="O ENCRIPTADOR - Sistema Completo (AES, RSA, SHA-256)",
+        epilog="Exemplo Hash: python main.py --action hash --text 'Mensagem Importante'"
+    )
+
+    grupo_acao = parser.add_argument_group('Ações')
+    grupo_config = parser.add_argument_group('Configurações')
+    grupo_io = parser.add_argument_group('Entrada/Saída')
+
+    # 1. Definição das Ações
+    grupo_acao.add_argument(
+        '--action', 
+        choices=['encrypt', 'decrypt', 'generate-keys', 'hash', 'check-hash', 'test'], 
+        default='test',
+        help="Escolha a operação. 'hash' gera um resumo; 'check-hash' verifica integridade."
+    )
+
+    # 2. Configuração do Algoritmo
+    grupo_config.add_argument(
+        '--cipher',
+        choices=['aes', 'rsa'],
+        default='aes',
+        help="Algoritmo de criptografia (Ignorado para ações de hash)."
+    )
+
+    # 3. Chave (Opcional para hash, obrigatória para criptografia)
+    grupo_config.add_argument('--key', help="Chave (AES), Arquivo .pem (RSA) ou Hash para verificação (check-hash).")
     
-    # Argumentos Gerais / AES
-    parser.add_argument("--test", action="store_true", help="Roda os testes de critério de aceitação (AES e Hash)")
-    parser.add_argument("--text", type=str, help="Texto para encriptar ou hashear")
-    parser.add_argument("--key", type=str, help="Chave de encriptação (HU-09)")
-    
-    # Argumentos Novos (Hashing - Épico 5)
-    parser.add_argument("--hash", action="store_true", help="Ativa modo de Hashing (SHA-256)")
-    parser.add_argument("--file", type=str, help="Caminho do arquivo para hashing (HU-16)")
-    parser.add_argument("--verify", type=str, help="Hash original para verificar integridade")
-    
+    # 4. Entradas e Saídas
+    grupo_io.add_argument('--text', help="Texto de entrada")
+    grupo_io.add_argument('--file', help="Arquivo de entrada")
+    grupo_io.add_argument('--output', help="Arquivo de saída")
+
     args = parser.parse_args()
 
-    # 1. Modo de Teste
-    if args.test:
-        rodar_teste_criterio_conclusao() # AES
-        rodar_teste_hashing()            # Hashing
-        sys.exit(0)
-    
-    # 2. Lógica de Hashing (Prioridade se --hash for passado)
-    if args.hash:
-        hasher = Hasher()
-        resultado_hash = ""
+    # ==========================================
+    # BLOCO 1: GERAÇÃO DE CHAVES (RSA)
+    # ==========================================
+    if args.action == 'generate-keys':
+        if args.cipher != 'rsa':
+            sys.exit("Erro: A ação 'generate-keys' requer --cipher rsa")
         
-        if args.file:
-            print(f"Calculando hash do arquivo: {args.file}...")
-            resultado_hash = hasher.generate_file_hash(args.file)
-        elif args.text:
-            resultado_hash = hasher.generate_text_hash(args.text)
-        else:
-            print("Erro: Para --hash, forneça --text ou --file.")
-            sys.exit(1)
-            
-        print(f"SHA-256: {resultado_hash}")
+        print("Gerando par de chaves RSA (2048 bits)...")
+        priv, pub = KeyManager.gerar_par_chaves_rsa()
+        nome = args.output if args.output else "id_rsa"
         
-        # Verificação de Integridade opcional na mesma chamada
-        if args.verify:
-            is_valid = hasher.verify_integrity(args.verify, resultado_hash)
-            if is_valid:
-                print("✅ INTEGRIDADE CONFIRMADA.")
-            else:
-                print("❌ ALERTA: OS HASHES NÃO CONFEREM.")
+        KeyManager.salvar_chave(f"{nome}_priv.pem", priv)
+        KeyManager.salvar_chave(f"{nome}_pub.pem", pub)
+        print(f"Sucesso! Chaves salvas: {nome}_priv.pem e {nome}_pub.pem")
         sys.exit(0)
 
-    # 3. Lógica de Encriptação (AES)
-    if args.text and args.key:
-        # Demonstração de uso real via linha de comando
-        chave = KeyManager.formatar_chave_simetrica(args.key)
-        motor = AESCipher(chave)
-        nonce, cifrado = motor.encriptar(args.text)
-        print(f"Texto Cifrado (hex): {binascii.hexlify(cifrado).decode()}")
-        print(f"Nonce (necessário p/ decifrar): {binascii.hexlify(nonce).decode()}")
+    # ==========================================
+    # BLOCO 2: HASHING (SHA-256) - ÉPICO 5
+    # ==========================================
+    if args.action in ['hash', 'check-hash']:
+        # Leitura dos dados (Comum para hash e criptografia)
+        dados_bytes = b""
+        if args.text:
+            dados_bytes = args.text.encode('utf-8')
+        elif args.file:
+            try:
+                with open(args.file, 'rb') as f: dados_bytes = f.read()
+            except FileNotFoundError:
+                sys.exit(f"Erro: Arquivo '{args.file}' não encontrado.")
+        else:
+            parser.error("Informe --text ou --file para processar o hash.")
+
+        # Ação: Gerar Hash
+        if args.action == 'hash':
+            resultado = SHA256Hasher.gerar_hash(dados_bytes)
+            print(f"\n[SHA-256] Hash Gerado:")
+            print(f"{resultado}")
+            
+            if args.output:
+                with open(args.output, 'w') as f: f.write(resultado)
+                print(f"Hash salvo em: {args.output}")
+
+        # Ação: Verificar Integridade (Bônus HU-16)
+        elif args.action == 'check-hash':
+            if not args.key:
+                sys.exit("Erro: Para 'check-hash', informe o hash original no argumento --key")
+            
+            integro = SHA256Hasher.verificar_integridade(dados_bytes, args.key)
+            status = "VÁLIDO (Íntegro)" if integro else "INVÁLIDO (Corrompido)"
+            print(f"\n[Verificação de Integridade]")
+            print(f"Resultado: {status}")
+        
+        sys.exit(0) # Encerra aqui se for hash
+
+    # ==========================================
+    # BLOCO 3: CRIPTOGRAFIA (AES / RSA)
+    # ==========================================
+    
+    # Validação de argumentos para Encriptação
+    if args.action == 'test':
+        print("Modo de teste rápido não implementado neste bloco. Use --action encrypt/decrypt.")
+        sys.exit(0)
+        
+    if not args.key:
+        parser.error("Para encriptar ou decriptar, o argumento --key é obrigatório.")
+
+    motor = None
+    try:
+        # Inicializa o motor correto
+        if args.cipher == 'aes':
+            k = KeyManager.formatar_chave_simetrica(args.key)
+            motor = AESCipher(k)
+        elif args.cipher == 'rsa':
+            if not os.path.exists(args.key):
+                sys.exit(f"Erro: Arquivo de chave '{args.key}' não encontrado.")
+            k = KeyManager.carregar_chave_arquivo(args.key)
+            motor = RSACipher(k)
+    except Exception as e:
+        sys.exit(f"Erro na inicialização da cifra: {e}")
+
+    # Leitura dos dados
+    dados_input = b""
+    if args.text:
+        # Se for decriptar texto, espera-se Hexadecimal
+        if args.action == 'decrypt':
+            try: dados_input = binascii.unhexlify(args.text)
+            except: sys.exit("Erro: Texto para decriptar deve ser Hexadecimal válido.")
+        else:
+            dados_input = args.text.encode('utf-8')
+    elif args.file:
+        try:
+            with open(args.file, 'rb') as f: dados_input = f.read()
+        except FileNotFoundError:
+            sys.exit(f"Erro: Arquivo '{args.file}' não encontrado.")
     else:
-        # Fallback se nenhum argumento válido for passado
-        print("Nenhum argumento de ação passado via CLI. Executando testes de validação...\n")
-        rodar_teste_criterio_conclusao()
-        rodar_teste_hashing()
-        print("\nDica: Use 'python main.py --help' para ver as opções.")
+        parser.error("Informe --text ou --file")
+
+    # Execução Encrypt/Decrypt
+    try:
+        if args.action == 'encrypt':
+            # RSA requer string no encrypt (para ser compatível com encode interno da lib)
+            # AES requer string também pela nossa interface
+            texto_claro = dados_input.decode('utf-8', errors='ignore') if args.cipher == 'rsa' else dados_input.decode('utf-8')
+            
+            nonce, cifrado = motor.encriptar(texto_claro)
+            
+            # Pacote final
+            pacote = (nonce if nonce else b"") + cifrado
+            
+            if args.output:
+                with open(args.output, 'wb') as f: f.write(pacote)
+                print(f"Sucesso. Salvo em: {args.output}")
+            else:
+                print(f"Resultado (Hex): {binascii.hexlify(pacote).decode()}")
+
+        elif args.action == 'decrypt':
+            if args.cipher == 'aes':
+                if len(dados_input) < 16: sys.exit("Dados insuficientes para AES.")
+                nonce, cifrado = dados_input[:16], dados_input[16:]
+                resultado = motor.decriptar(nonce, cifrado)
+            else:
+                # RSA (sem nonce externo)
+                resultado = motor.decriptar(None, dados_input)
+            
+            if args.output:
+                with open(args.output, 'w', encoding='utf-8') as f: f.write(resultado)
+                print(f"Sucesso. Salvo em: {args.output}")
+            else:
+                print(f"Decriptado: {resultado}")
+
+    except Exception as e:
+        sys.exit(f"Erro na operação: {e}")
 
 if __name__ == "__main__":
     main()
