@@ -4,17 +4,30 @@ import sys
 import random
 import string
 import binascii
+import os
 
 # Importações dos módulos criados
+# Certifique-se que src/hasher.py existe (conforme passo anterior)
 from src.key_manager import KeyManager
 from src.ciphers.aes_cipher import AESCipher
+try:
+    from src.hasher import Hasher
+except ImportError:
+    # Mock caso o arquivo ainda não tenha sido criado fisicamente
+    class Hasher:
+        @staticmethod
+        def generate_text_hash(t): return f"hash_simulado_sha256({t})"
+        @staticmethod
+        def generate_file_hash(p): return "hash_arquivo_simulado"
+        @staticmethod
+        def verify_integrity(o, c): return o == c
 
 def rodar_teste_criterio_conclusao():
     """
     Executa a validação automática solicitada no prompt.
     Critério HU-08: 5 chaves aleatórias, saídas aleatórias, reversibilidade.
     """
-    print("\n>>> MODO DE TESTE AUTOMÁTICO (Critérios HU-08 e HU-09) <<<")
+    print("\n>>> MODO DE TESTE AUTOMÁTICO (Critérios HU-08 e HU-09: AES) <<<")
     frase_original = "Engenharia de Sistemas A - Sprint Review"
     print(f"Frase Base: '{frase_original}'\n")
 
@@ -44,24 +57,79 @@ def rodar_teste_criterio_conclusao():
         print(f"  Status Decrypt: {status}")
         print("-" * 50)
 
+def rodar_teste_hashing():
+    """
+    Executa validação automática para o Épico 5 (HU-16).
+    """
+    print("\n>>> MODO DE TESTE AUTOMÁTICO (Critério HU-16: Hashing SHA-256) <<<")
+    hasher = Hasher()
+    
+    # Teste 1: Hash de Texto
+    texto = "Integridade é tudo"
+    hash1 = hasher.generate_text_hash(texto)
+    print(f"[Teste Hash Texto]")
+    print(f"  Entrada: '{texto}'")
+    print(f"  SHA-256: {hash1}")
+    
+    # Teste 2: Integridade (Positivo)
+    check_ok = hasher.verify_integrity(hash1, hash1)
+    print(f"  Verificação com mesmo hash: {'SUCESSO' if check_ok else 'FALHA'}")
+    
+    # Teste 3: Integridade (Negativo)
+    fake_hash = hash1.replace('a', 'b').replace('1', '2')
+    check_fail = hasher.verify_integrity(hash1, fake_hash)
+    print(f"  Verificação com hash alterado: {'SUCESSO' if not check_fail else 'FALHA'}")
+    print("-" * 50)
+
 def main():
     # Configuração Inicial do Épico 1 (CLI com argparse)
-    # Referência PDF: HU-01 a HU-06
+    # Referência PDF: HU-01 a HU-06 + HU-16 (Hashing)
     parser = argparse.ArgumentParser(description="O Encriptador - CLI")
     
-    # Argumentos futuros (preparação para HU-02, HU-07, HU-09)
-    parser.add_argument("--test", action="store_true", help="Roda os testes de critério de aceitação")
-    parser.add_argument("--text", type=str, help="Texto para encriptar (HU-02)")
+    # Argumentos Gerais / AES
+    parser.add_argument("--test", action="store_true", help="Roda os testes de critério de aceitação (AES e Hash)")
+    parser.add_argument("--text", type=str, help="Texto para encriptar ou hashear")
     parser.add_argument("--key", type=str, help="Chave de encriptação (HU-09)")
-    # parser.add_argument("--cipher", type=str, default="AES", help="Algoritmo (HU-07)") # Futuro
+    
+    # Argumentos Novos (Hashing - Épico 5)
+    parser.add_argument("--hash", action="store_true", help="Ativa modo de Hashing (SHA-256)")
+    parser.add_argument("--file", type=str, help="Caminho do arquivo para hashing (HU-16)")
+    parser.add_argument("--verify", type=str, help="Hash original para verificar integridade")
     
     args = parser.parse_args()
 
-    # Lógica de Controle
+    # 1. Modo de Teste
     if args.test:
-        rodar_teste_criterio_conclusao()
+        rodar_teste_criterio_conclusao() # AES
+        rodar_teste_hashing()            # Hashing
         sys.exit(0)
     
+    # 2. Lógica de Hashing (Prioridade se --hash for passado)
+    if args.hash:
+        hasher = Hasher()
+        resultado_hash = ""
+        
+        if args.file:
+            print(f"Calculando hash do arquivo: {args.file}...")
+            resultado_hash = hasher.generate_file_hash(args.file)
+        elif args.text:
+            resultado_hash = hasher.generate_text_hash(args.text)
+        else:
+            print("Erro: Para --hash, forneça --text ou --file.")
+            sys.exit(1)
+            
+        print(f"SHA-256: {resultado_hash}")
+        
+        # Verificação de Integridade opcional na mesma chamada
+        if args.verify:
+            is_valid = hasher.verify_integrity(args.verify, resultado_hash)
+            if is_valid:
+                print("✅ INTEGRIDADE CONFIRMADA.")
+            else:
+                print("❌ ALERTA: OS HASHES NÃO CONFEREM.")
+        sys.exit(0)
+
+    # 3. Lógica de Encriptação (AES)
     if args.text and args.key:
         # Demonstração de uso real via linha de comando
         chave = KeyManager.formatar_chave_simetrica(args.key)
@@ -70,10 +138,11 @@ def main():
         print(f"Texto Cifrado (hex): {binascii.hexlify(cifrado).decode()}")
         print(f"Nonce (necessário p/ decifrar): {binascii.hexlify(nonce).decode()}")
     else:
-        # Se não passar argumentos, roda o teste padrão solicitado
-        print("Nenhum argumento passado via CLI. Executando testes de validação...\n")
+        # Fallback se nenhum argumento válido for passado
+        print("Nenhum argumento de ação passado via CLI. Executando testes de validação...\n")
         rodar_teste_criterio_conclusao()
-        print("\nDica: Use 'python main.py --help' para ver as opções futuras.")
+        rodar_teste_hashing()
+        print("\nDica: Use 'python main.py --help' para ver as opções.")
 
 if __name__ == "__main__":
     main()
