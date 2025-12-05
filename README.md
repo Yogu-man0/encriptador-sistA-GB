@@ -1,48 +1,41 @@
 # O Encriptador
 
 Projeto de software desenvolvido para a disciplina de **Engenharia de Sistemas A**.
-Uma ferramenta de linha de comando (CLI) para criptografia simétrica, assimétrica e verificação de integridade via hash.
+Ferramenta completa de segurança que implementa algoritmos simétricos, assimétricos, hashing e protocolos de troca de chaves.
 
 **Alunos:**
- Gabriel Passos
- Barbara Alves
+* Gabriel Passos
+* Barbara Alves
 
 ---
 
-## Funcionalidades Implementadas
+## 🚀 Funcionalidades (Sprint 3 Finalizada)
 
-O projeto encontra-se na fase de conclusão do **Sprint 3**. As seguintes funcionalidades já estão operacionais:
-
-### Criptografia Simétrica (AES)
-* **Algoritmo:** AES (Advanced Encryption Standard).
-* **Funcionalidades:** Encriptação e Decriptação.
-* **Chaves:** Aceita senhas de texto (formatadas automaticamente para 128 bits).
-* **Segurança:** Utiliza modo autenticado (EAX) com geração de Nonce aleatório.
-
-### Criptografia Assimétrica (RSA)
-* **Algoritmo:** RSA (Rivest–Shamir–Adleman).
-* **Geração de Chaves:** Cria par de chaves (Pública/Privada) de 2048 bits em arquivos `.pem`.
-* **Cifragem:** Encripta dados usando a **Chave Pública**.
-* **Decifragem:** Decripta dados usando a **Chave Privada**.
-
-### Hashing e Integridade (SHA-256)
-* **Algoritmo:** SHA-256.
-* **Geração:** Cria resumos (hashes) de textos ou arquivos.
-* **Verificação:** Compara um hash original com o conteúdo atual para validar integridade (`check-hash`).
-
-### Interface de Linha de Comando (CLI)
-* Suporte a entrada direta de texto via `--text`.
-* Suporte a leitura de arquivos via `--file`.
-* Suporte a salvamento de resultado em arquivo via `--output`.
-* Menu de ajuda automático (`--help`).
+* **AES (Simétrico):** Encriptação autenticada (EAX) de mensagens e arquivos.
+* **RSA (Assimétrico):** Geração de chaves (2048 bits) e criptografia segura.
+* **Diffie-Hellman (DFH):** Protocolo para troca segura de chaves em canais públicos.
+* **SHA-256 (Hashing):** Verificação de integridade de arquivos e assinaturas.
+* **Interface Dual:** Menu interativo (para iniciantes) e CLI robusta (para automação).
 
 ---
 
-## 🛠️ Instalação e Dependências
+## 🛠️ Instalação e Execução
 
-O projeto foi desenvolvido em **Python 3**. A criptografia depende da biblioteca `pycryptodome`.
+### Opção 1: Executável (Windows)
+Não requer Python instalado. Baixe o arquivo na aba **Releases**.
+* **Modo Menu:** Dê duplo clique no `O Encriptador.exe`.
+* **Modo Comando:** Abra o terminal na pasta e rode `O Encriptador.exe --help`.
 
-1. **Clone o repositório:**
-   ```bash
-   git clone [https://github.com/Yogu-man0/encriptador-sistA-GB.git](https://github.com/Yogu-man0/encriptador-sistA-GB.git)
-   cd encriptador-sistA-GB
+### Opção 2: Código Fonte (Linux/Mac/Windows)
+Requer Python 3.
+
+```bash
+# 1. Clone e entre na pasta
+git clone [https://github.com/Yogu-man0/encriptador-sistA-GB.git](https://github.com/Yogu-man0/encriptador-sistA-GB.git)
+cd encriptador-sistA-GB
+
+# 2. Instale dependências
+pip install -r requirements.txt
+
+# 3. Execute
+python main.py
